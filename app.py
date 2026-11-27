@@ -244,7 +244,56 @@ def add_speak_button(text, button_id, rate=0.9):
         🔊 Đọc câu này</button>
     """
     st.components.v1.html(js_code, height=45)
+# ⭐ ĐỊNH NGHĨA CÁC CÔNG CỤ (TOOLS) CHO AI
+tools = [
+    {
+        "name": "search_dictionary",
+        "description": "Tra cứu từ vựng tiếng Anh. Dùng khi user yêu cầu tra từ, hỏi nghĩa, hoặc hỏi cách phát âm.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "word": {"type": "string", "description": "Từ tiếng Anh cần tra cứu"}
+            },
+            "required": ["word"]
+        }
+    },
+    {
+        "name": "generate_quiz",
+        "description": "Tạo bài tập trắc nghiệm tiếng Anh theo chủ đề ngữ pháp hoặc từ vựng. Dùng khi user yêu cầu làm bài tập, luyện tập.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "topic": {"type": "string", "description": "Chủ đề bài tập (ví dụ: present_simple, vocabulary_food, conditionals)"},
+                "num_questions": {"type": "integer", "description": "Số lượng câu hỏi (mặc định 5)"}
+            },
+            "required": ["topic"]
+        }
+    }
+]
 
+# ⭐ HÀM THỰC THI CÔNG CỤ (AI sẽ gọi hàm này)
+def execute_tool(tool_name, args):
+    if tool_name == "search_dictionary":
+        word = args.get("word", "")
+        # Giả lập tra từ điển (sau này có thể thay bằng API thật như FreeDictionaryAPI)
+        return f"""
+        📖 **{word.capitalize()}** 
+        *Phát âm:* /.../ 
+        *Nghĩa:* (Đang cập nhật - AI sẽ điền nghĩa chính xác dựa trên ngữ cảnh)
+        *Ví dụ:* I learned the word '{word}' today.
+        """
+    
+    elif tool_name == "generate_quiz":
+        topic = args.get("topic", "general")
+        num = args.get("num_questions", 5)
+        # Giả lập tạo quiz (sau này có thể thay bằng logic tạo câu hỏi thật)
+        quiz_text = f"📝 **Bài tập: {topic.replace('_', ' ').title()}** ({num} câu)\n\n"
+        for i in range(1, num + 1):
+            quiz_text += f"{i}. [Câu hỏi mẫu về {topic}] ...\n   A. ...  B. ...  C. ...  D. ...\n\n"
+        quiz_text += "*💡 Gợi ý: Hãy thử trả lời trước khi xem đáp án!*"
+        return quiz_text
+    
+    return "❌ Không tìm thấy công cụ này."
 
 # 8. HÀM GỌI AI
 def call_ai(chat_history):
