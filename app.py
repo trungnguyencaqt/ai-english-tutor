@@ -31,7 +31,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 3. Sidebar
-api_key = st.sidebar.text_input("🔑 Google API Key:", type="password")
+# Ưu tiên lấy Key từ Streamlit Secrets (khi deploy lên web)
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+else:
+    # Nếu chạy local thì vẫn hiện ô nhập tay
+    api_key = st.sidebar.text_input("🔑 Google API Key:", type="password")
 
 # ⭐ MENU CHỌN TRÌNH ĐỘ
 level = st.sidebar.selectbox(
