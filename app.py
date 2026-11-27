@@ -295,23 +295,54 @@ def execute_tool(tool_name, args):
     
     return "❌ Không tìm thấy công cụ này."
 
-# 8. HÀM GỌI AI
+# ⭐ HÀM GỌI AI ĐÃ NÂNG CẤP (Hỗ trợ Function Calling)
 def call_ai(chat_history):
     if not api_key:
         st.error("⚠️ Vui lòng nhập API Key ở thanh bên trái!")
         return None
     try:
         client = genai.Client(api_key=api_key)
+        
+        # ⭐ Gửi kèm danh sách tools cho AI
         response = client.models.generate_content(
             model=selected_model,
             contents=chat_history,
-            config={"response_modalities": ["TEXT"]}
+            config={
+                "response_modalities": ["TEXT"],
+                "tools": tools  # ⭐ Dòng quan trọng nhất
+            }
         )
+        
+        # ⭐ KIỂM TRA XEM AI CÓ MUỐN GỌI TOOL KHÔNG
+        candidate = response.candidates[0]
+        
+        # Nếu AI trả về function_call thay vì text
+        if hasattr(candidate.content.parts[0], 'function_call') and candidate.content.parts[0].function_call:
+            fc = candidate.content.parts[0].function_call
+            tool_name = fc.name
+            args = dict(fc.args)
+            
+            # Thực thi tool
+            tool_result = execute_tool(tool_name, args)
+            
+            # ⭐ Gửi kết quả tool обратно cho AI để nó tổng hợp câu trả lời
+            chat_history.append({"role": "model", "parts": [{"function_call": {"name": tool_name, "args": args}}]})
+            chat_history.append({"role": "user", "parts": [{"function_response": {"name": tool_name, "response": {"result": tool_result}}}]})
+            
+            # Gọi AI lần 2 để nó dùng kết quả tool tạo câu trả lời cuối cùng
+            final_response = client.models.generate_content(
+                model=selected_model,
+                contents=chat_history,
+                config={"response_modalities": ["TEXT"]}
+            )
+            return final_response.text
+        
+        # Nếu AI trả về text bình thường
         return response.text
+        
     except Exception as e:
         st.error(f"❌ Lỗi AI: {str(e)}")
         return None
-
 
 # 9. HÀM XỬ LÝ 1 LƯỢT HỘI THOẠI
 def handle_turn(user_display, user_part):
