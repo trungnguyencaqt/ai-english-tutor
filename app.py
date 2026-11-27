@@ -288,7 +288,45 @@ def handle_turn(user_display, user_part):
                 st.session_state.messages.append({"role": "assistant", "content": ai_text})
             else:
                 st.warning("⚠️ AI không trả lời.")
+def handle_image_turn(image_bytes, mime_type):
+    """Xử lý khi người dùng tải lên một bức ảnh"""
+    # Chuyển ảnh sang base64 để gửi cho Gemini
+    image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+    
+    # Tạo prompt đặc biệt cho ảnh
+    image_prompt = f"Nhìn bức ảnh này. Hãy dạy tôi từ vựng tiếng Anh liên quan đến bức ảnh này ở trình độ {level}. Với mỗi từ, hãy đưa ra cách phát âm, nghĩa tiếng Việt và một câu ví dụ đơn giản."
+    
+    # Chuẩn bị lịch sử chat (giống như text, nhưng thêm phần ảnh)
+    chat_history = [{"role": "user", "parts": [{"text": current_prompt}]}]
+    for msg in st.session_state.messages:
+        role = "user" if msg["role"] == "user" else "model"
+        chat_history.append({"role": role, "parts": [{"text": msg["content"]}]})
+    
+    # ⭐ ĐÂY LÀ ĐIỂM KHÁC BIỆT: Gửi cả TEXT và INLINE_DATA (Ảnh)
+    chat_history.append({"role": "user", "parts": [
+        {"text": image_prompt},
+        {"inline_data": {"mime_type": mime_type, "data": image_b64}}
+    ]})
 
+    # Hiển thị ảnh lên màn hình chat
+    with st.chat_message("user"):
+        st.markdown("*(📷 Bạn đã gửi một bức ảnh)*")
+        st.image(image_bytes, width=200)
+    st.session_state.messages.append({"role": "user", "content": "*(📷 Bạn đã gửi một bức ảnh)*"})
+
+    # Gọi AI và nhận phản hồi
+    with st.chat_message("assistant"):
+        with st.spinner("👁️ AI đang quan sát bức ảnh..."):
+            ai_text = call_ai(chat_history)
+            if ai_text:
+                st.markdown(ai_text)
+                if auto_speak:
+                    speak_with_browser(ai_text, speak_rate)
+                    speak_with_gtts(ai_text, speak_rate)
+                add_speak_button(ai_text, f"btn_img_{len(st.session_state.messages)}", speak_rate)
+                st.session_state.messages.append({"role": "assistant", "content": ai_text})
+            else:
+                st.warning("⚠️ AI không trả lời.")
 
 # 10. Hiển thị thông tin trình độ hiện tại
 st.info(f"📚 Bạn đang học ở trình độ: **{level}**")
