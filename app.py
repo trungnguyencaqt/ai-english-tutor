@@ -368,17 +368,35 @@ if prompt := st.chat_input("Hoặc gõ câu tiếng Anh..."):
     handle_turn(prompt, {"text": prompt})
     st.rerun()
 # Thêm tính năng tải ảnh lên
+# ⭐ KHỞI TẠO FLAG ĐÁNH DẤU ẢNH ĐÃ XỬ LÝ
+if "image_processed" not in st.session_state:
+    st.session_state.image_processed = False
+
+# Thêm tính năng tải ảnh lên
 st.markdown("---")
 st.caption("📷 Hoặc tải ảnh lên để AI dạy từ vựng:")
-uploaded_file = st.file_uploader("Chọn một bức ảnh...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader(
+    "Chọn một bức ảnh...", 
+    type=["jpg", "jpeg", "png"],
+    key="img_uploader"  # ⭐ Key cố định để tránh bị reset
+)
 
-if uploaded_file is not None:
-    # Đọc ảnh và gọi hàm xử lý
+# ⭐ CHỈ XỬ LÝ KHI CÓ ẢNH MỚI VÀ CHƯA ĐƯỢC XỬ LÝ
+if uploaded_file is not None and not st.session_state.image_processed:
     image_bytes = uploaded_file.read()
     mime_type = uploaded_file.type
+    
+    # Đánh dấu đã xử lý TRƯỚC KHI rerun
+    st.session_state.image_processed = True
+    
+    # Gọi hàm xử lý ảnh
     handle_image_turn(image_bytes, mime_type)
     
-    # Xóa file khỏi uploader để không bị gửi lại 2 lần
-    uploaded_file = None 
+    # Rerun để cập nhật giao diện chat
     st.rerun()
+
+# ⭐ RESET FLAG SAU KHI RERUN HOÀN TẤT
+# (Đoạn này nằm ngoài if uploaded_file, luôn chạy mỗi lần render)
+if st.session_state.image_processed:
+    st.session_state.image_processed = False
 st.markdown('</div>', unsafe_allow_html=True)
