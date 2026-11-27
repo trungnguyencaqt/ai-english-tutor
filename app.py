@@ -367,5 +367,18 @@ if prompt := st.chat_input("Hoặc gõ câu tiếng Anh..."):
         st.rerun()
     handle_turn(prompt, {"text": prompt})
     st.rerun()
+# Thêm tính năng tải ảnh lên
+st.markdown("---")
+st.caption("📷 Hoặc tải ảnh lên để AI dạy từ vựng:")
+uploaded_file = st.file_uploader("Chọn một bức ảnh...", type=["jpg", "jpeg", "png"])
 
+if uploaded_file is not None:
+    # Đọc ảnh và gọi hàm xử lý
+    image_bytes = uploaded_file.read()
+    mime_type = uploaded_file.type
+    handle_image_turn(image_bytes, mime_type)
+    
+    # Xóa file khỏi uploader để không bị gửi lại 2 lần
+    uploaded_file = None 
+    st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
