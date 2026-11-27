@@ -244,92 +244,97 @@ def add_speak_button(text, button_id, rate=0.9):
         🔊 Đọc câu này</button>
     """
     st.components.v1.html(js_code, height=45)
-# ⭐ ĐỊNH NGHĨA CÁC CÔNG CỤ (TOOLS) CHO AI
+# ⭐ ĐỊNH NGHĨA TOOLS (Giữ nguyên)
 tools = [
     {
         "name": "search_dictionary",
-        "description": "Tra cứu từ vựng tiếng Anh. Dùng khi user yêu cầu tra từ, hỏi nghĩa, hoặc hỏi cách phát âm.",
+        "description": "Tra cứu từ vựng tiếng Anh. Dùng khi user yêu cầu tra từ, hỏi nghĩa hoặc phát âm.",
         "parameters": {
             "type": "object",
             "properties": {
-                "word": {"type": "string", "description": "Từ tiếng Anh cần tra cứu"}
+                "word": {"type": "string", "description": "Từ tiếng Anh cần tra"}
             },
             "required": ["word"]
         }
     },
     {
         "name": "generate_quiz",
-        "description": "Tạo bài tập trắc nghiệm tiếng Anh theo chủ đề ngữ pháp hoặc từ vựng. Dùng khi user yêu cầu làm bài tập, luyện tập.",
+        "description": "Tạo bài tập trắc nghiệm tiếng Anh theo chủ đề ngữ pháp/từ vựng.",
         "parameters": {
             "type": "object",
             "properties": {
-                "topic": {"type": "string", "description": "Chủ đề bài tập (ví dụ: present_simple, vocabulary_food, conditionals)"},
-                "num_questions": {"type": "integer", "description": "Số lượng câu hỏi (mặc định 5)"}
+                "topic": {"type": "string", "description": "Chủ đề (vd: present_simple, vocabulary_food)"},
+                "num_questions": {"type": "integer", "description": "Số câu hỏi (mặc định 5)"}
             },
             "required": ["topic"]
         }
     }
 ]
 
-# ⭐ HÀM THỰC THI CÔNG CỤ (AI sẽ gọi hàm này)
-def execute_tool(tool_name, args):
+# ⭐ HÀM THỰC THI TOOL
+def execute_tool(tool_name, args_dict):
     if tool_name == "search_dictionary":
-        word = args.get("word", "")
-        # Giả lập tra từ điển (sau này có thể thay bằng API thật như FreeDictionaryAPI)
-        return f"""
-        📖 **{word.capitalize()}** 
-        *Phát âm:* /.../ 
-        *Nghĩa:* (Đang cập nhật - AI sẽ điền nghĩa chính xác dựa trên ngữ cảnh)
-        *Ví dụ:* I learned the word '{word}' today.
-        """
+        word = args_dict.get("word", "")
+        return f"📖 **{word.capitalize()}**\n*Phát âm:* /.../\n*Nghĩa:* (AI sẽ điền dựa trên ngữ cảnh)\n*Ví dụ:* I learned '{word}' today."
     
     elif tool_name == "generate_quiz":
-        topic = args.get("topic", "general")
-        num = args.get("num_questions", 5)
-        # Giả lập tạo quiz (sau này có thể thay bằng logic tạo câu hỏi thật)
-        quiz_text = f"📝 **Bài tập: {topic.replace('_', ' ').title()}** ({num} câu)\n\n"
+        topic = args_dict.get("topic", "general")
+        num = int(args_dict.get("num_questions", 5))
+        quiz = f"📝 **Bài tập: {topic.replace('_', ' ').title()}** ({num} câu)\n\n"
         for i in range(1, num + 1):
-            quiz_text += f"{i}. [Câu hỏi mẫu về {topic}] ...\n   A. ...  B. ...  C. ...  D. ...\n\n"
-        quiz_text += "*💡 Gợi ý: Hãy thử trả lời trước khi xem đáp án!*"
-        return quiz_text
+            quiz += f"{i}. [Câu hỏi về {topic}] ...\n   A. ... B. ... C. ... D. ...\n\n"
+        quiz += "*💡 Hãy thử trả lời trước khi xem đáp án!*"
+        return quiz
     
     return "❌ Không tìm thấy công cụ này."
 
-# ⭐ HÀM GỌI AI ĐÃ NÂNG CẤP (Hỗ trợ Function Calling)
+# ⭐ HÀM GỌI AI ĐÃ SỬA LỖI TƯƠNG THÍCH GOOGLE-GENAI MỚI
 def call_ai(chat_history):
     if not api_key:
-        st.error("⚠️ Vui lòng nhập API Key ở thanh bên trái!")
+        st.error("⚠️ Vui lòng nhập API Key!")
         return None
+    
     try:
         client = genai.Client(api_key=api_key)
         
-        # ⭐ Gửi kèm danh sách tools cho AI
+        # Gửi kèm tools cho AI
         response = client.models.generate_content(
             model=selected_model,
             contents=chat_history,
             config={
                 "response_modalities": ["TEXT"],
-                "tools": tools  # ⭐ Dòng quan trọng nhất
+                "tools": tools
             }
         )
         
-        # ⭐ KIỂM TRA XEM AI CÓ MUỐN GỌI TOOL KHÔNG
         candidate = response.candidates[0]
+        part = candidate.content.parts[0]
         
-        # Nếu AI trả về function_call thay vì text
-        if hasattr(candidate.content.parts[0], 'function_call') and candidate.content.parts[0].function_call:
-            fc = candidate.content.parts[0].function_call
-            tool_name = fc.name
-            args = dict(fc.args)
+        # ⭐ KIỂM TRA FUNCTION CALL THEO CÚ PHÁP MỚI
+        # Trong google-genai mới, function_call nằm trong thuộc tính riêng, không phải hasattr thông thường
+        func_call = getattr(part, 'function_call', None)
+        
+        if func_call is not None:
+            tool_name = func_call.name
+            
+            # ⭐ CHUYỂN ĐỔI ARGS THÀNH DICT ĐÚNG CÁCH
+            # Args trong SDK mới là đối tượng đặc biệt, phải convert qua dict()
+            args_dict = dict(func_call.args) if func_call.args else {}
             
             # Thực thi tool
-            tool_result = execute_tool(tool_name, args)
+            tool_result = execute_tool(tool_name, args_dict)
             
-            # ⭐ Gửi kết quả tool обратно cho AI để nó tổng hợp câu trả lời
-            chat_history.append({"role": "model", "parts": [{"function_call": {"name": tool_name, "args": args}}]})
-            chat_history.append({"role": "user", "parts": [{"function_response": {"name": tool_name, "response": {"result": tool_result}}}]})
+            # ⭐ GỬI KẾT QUẢ TOOL TRỞ LẠI CHO AI (CÚ PHÁP MỚI)
+            chat_history.append({
+                "role": "model", 
+                "parts": [{"function_call": {"name": tool_name, "args": args_dict}}]
+            })
+            chat_history.append({
+                "role": "user", 
+                "parts": [{"function_response": {"name": tool_name, "response": {"result": tool_result}}}]
+            })
             
-            # Gọi AI lần 2 để nó dùng kết quả tool tạo câu trả lời cuối cùng
+            # Gọi AI lần 2 để tổng hợp câu trả lời cuối cùng
             final_response = client.models.generate_content(
                 model=selected_model,
                 contents=chat_history,
@@ -337,11 +342,13 @@ def call_ai(chat_history):
             )
             return final_response.text
         
-        # Nếu AI trả về text bình thường
+        # Trả về text bình thường nếu không cần gọi tool
         return response.text
         
     except Exception as e:
         st.error(f"❌ Lỗi AI: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc(), language="text")
         return None
 
 # 9. HÀM XỬ LÝ 1 LƯỢT HỘI THOẠI
