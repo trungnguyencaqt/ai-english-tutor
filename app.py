@@ -41,7 +41,7 @@ level = st.sidebar.selectbox(
 
 selected_model = st.sidebar.selectbox(
     "🤖 Chọn Model AI:",
-    ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite"]
+    [ "gemini-3.5-flash-lite"]
 )
 auto_speak = st.sidebar.toggle("🔊 Tự động đọc câu trả lời", value=True)
 speak_rate = st.sidebar.slider("⚡ Tốc độ đọc:", 0.5, 1.5, 0.9, 0.1)
